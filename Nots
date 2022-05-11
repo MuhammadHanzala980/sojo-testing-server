@@ -1,0 +1,392 @@
+const express = require("express");
+const moment = require("moment");
+const router = express.Router();
+const Applicant = require("../../models/Applicant");
+const EmployersAuth = require("../../models/EmployersAuth");
+const JobListing = require("../../models/JobListing");
+const JobSeeker = require("../../models/JobSeekerAuth");
+const Offers = require("../../models/OffersModal");
+
+
+// {
+//     "jobId":"6248406c05d466f967105be8",
+//     "applicationStatus":"applied",
+//     "applicantId":"6243563aa07cc5c7610d21b0",
+//     "employerId":"623e07a284e9d9ca68871591",
+//     "jobTitle":"React Native Developer"
+// }
+
+
+// API: for applying job
+router.post("/applicant/apply", async (req, res) => {
+    const { jobId, applicationStatus, applicantId, employerId, jobTitle } = req.body;
+    try {
+        const isApplicantAvailble = await Applicant.findOne({ applicantId, jobId }).exec()
+        if (isApplicantAvailble) {
+            await res.status(200).json({
+                message: "You have already applied on this job!",
+                success: true
+            });
+        } else {
+            const applicant = new Applicant({ jobId, applicationStatus, applicantId, employerId, jobTitle });
+            const updateApplicantCount = await JobListing.findByIdAndUpdate({ _id: jobId }, { $inc: { numberOfApplicants: 1 } })
+            const saveData = await applicant.save();
+            if (saveData && updateApplicantCount) {
+                await res.status(200).json({
+                    message: "Successfully Applied!",
+                    success: true
+                });
+            };
+        };
+    } catch (error) {
+        res.status(200).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+// joob seeker applications list 
+router.post("/applicant/get_my_applications", async (req, res) => {
+    const { applicantId, skip, applicationStatus = "rejected" } = req.body;
+    const date = moment().startOf(1, 'day');
+    const today = date.toDate();
+    date.add(3, 'days');
+    // const ater4days = moment(date).endOf(date.add(1, 'day')).toDate();
+    const ater4days = moment(date).endOf(date.add(1, 'day')).toDate();
+    console.log(today > ater4days)
+    console.log(today)
+    console.log(ater4days)
+    try {
+        const applicant = await Applicant.find({
+            applicantId,
+            applicationStatus,
+        }).skip(skip).limit(20).exec();
+        // console.log(applicant, "APPLICA")
+        console.log(applicant.filter(x => x.rejectedAt < ater4days))
+        const filterId = applicant.map(x => x.jobId);
+        const jobseeker = await JobListing.find({ '_id': { $in: filterId } }).exec();
+        await res.status(200).json({
+            success: true,
+            applicants: jobseeker
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+
+// API for getting all applicants to show  employer's  spasific job
+router.post("/applicant/get_job_applicantion", async (req, res) => {
+    const { skip, jobId } = req.body;
+    try {
+        const applicant = await Applicant.find({ jobId }).skip(skip).limit(20).select(["applicantId"]).exec();
+        const filterId = applicant.map(x => x.applicantId);
+        const jobseeker = await JobSeeker.find({ '_id': { $in: filterId } }).exec();
+        await res.status(200).json({
+            success: true,
+            applicants: jobseeker
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+
+router.post("/applicant/get", async (req, res) => {
+    const { skip = 0, jobTitle, employerId, applicationStatus } = req.body;
+    try {
+        const applicant = await Applicant.find({ employerId, jobTitle, applicationStatus }).skip(skip).limit(20).select(["applicantId"]).exec();
+        const filterId = applicant.map(x => x.applicantId);
+        const jobseeker = await JobSeeker.find({ '_id': { $in: filterId } }).exec();
+        await res.status(200).json({
+            success: true,
+            applicants_len: jobseeker.length,
+            applicants: jobseeker,
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+router.post("/applicant/detail", async (req, res) => {
+    const { applicantId } = req.body;
+    try {
+        const seeker = await JobSeeker.findOne({ _id: applicantId }).exec();
+        await res.status(200).json({
+            success: true,
+            applicant: seeker,
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+
+
+
+
+
+router.post("/applicant/set-skill-score", async (req, res) => {
+    const { applicantId, skill, score } = req.body;
+    try {
+        await JobSeeker.updateOne({ _id: applicantId, "skills.skill": skill },
+            { $set: { "skills.$.quiz": score, "skills.$.replied": true } });
+        await res.status(200).json({
+            message: "Score updated successfully!",
+            success: true
+        });
+    } catch (err) {
+        await res.status(500).json({
+            message: err.message,
+            success: false
+        });
+    };
+});
+
+
+
+
+
+
+// this api is using for show offer of job seeker 
+// router.post("/applicant/get-offer", async (req, res) => {
+//     const { applicantId, employerId } = req.body;
+//     try {
+//         const offerDetail = await new Offers.findOne({ applicantId, employerId });
+//         await res.status(200).json({
+//             success: true,
+//             offerDetail: offerDetail
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             message: error?.message,
+//             success: true
+//         });
+//     };
+// });
+
+
+
+// API for moveing applnicat to assess 
+router.post("/applicant/aske-question", async (req, res) => {
+    const { applicantId, jobTitle, employerId, } = req.body;
+    try {
+        const checkAssess = await Applicant.findOne({ applicantId, jobTitle, employerId });
+        if (checkAssess) {
+            await Applicant.updateOne({ applicantId, jobTitle, employerId }, { applicationStatus: "assess" });
+        } else {
+            await new Applicant({ applicantId, jobTitle, employerId, applicationStatus: "assess" }).save();
+        }
+        await res.status(200).json({
+            message: "application moved to assess",
+            success: true
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+// joob seeker applications list 
+router.post("/applicant/get-offers", async (req, res) => {
+    const { applicantId, skip } = req.body;
+    try {
+        const offer = await Offers.find({ applicantId }).skip(skip).limit(20).exec();
+        await res.status(200).json({
+            success: true,
+            offers: offer
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+router.post("/applicant/get-assess", async (req, res) => {
+    const { applicantId, skip } = req.body;
+    try {
+        const offer = await Offers.find({ applicantId }).skip(skip).limit(20).exec();
+        await res.status(200).json({
+            success: true,
+            offers: offer
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+router.post("/applicant/reject-aplied", async (req, res) => {
+    const { applicantId, jobTitle, employerId, } = req.body;
+    // const date = moment().startOf('day');
+    // // console.log(moment().format())
+    // const today = date.toDate();
+    // date.add(3, 'days');
+
+    // // const ater4days = moment(date).endOf(date.add(1, 'day')).toDate();
+    // const ater4days = moment(date).endOf(date.add(1, 'day')).toDate();
+    // console.log(today > ater4days)
+    // console.log(today)
+    // console.log(ater4days)
+    try {
+        await Applicant.updateMany({ applicantId, jobTitle, employerId }, {
+            applicationStatus: "rejected",
+            rejectedAt: ater4days
+        });
+        await res.status(200).json({
+            message: "application rejected!",
+            success: true
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+router.post("/offer/reject-offer", async (req, res) => {
+    const { applicantId, jobTitle, employerId, } = req.body;
+    try {
+        await Offers.updateOne({ applicantId, jobTitle, employerId }, {
+            rejectedAt: moment().format()
+        });
+        await res.status(200).json({
+            message: "application rejected!",
+            success: true
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+router.post("/applicant/make-offer", async (req, res) => {
+    const { applicantId, jobTitle, employerId, basicSalary, workHours, allowance, overTimeRate, dateOfpayment, Deduction } = req.body;
+    try {
+        const isAppleiedBefor = await Applicant.findOne({ applicantId, jobTitle, employerId });
+        if (!isAppleiedBefor) {
+            await Applicant.updateOne({ applicantId, jobTitle, employerId }, { applicationStatus: "offered" });
+        } else {
+            await new Applicant({ applicantId, jobTitle, employerId, applicationStatus: "offered" }).save();
+        }
+        await new Offers({ employerId, applicantId, basicSalary, workHours, allowance, overTimeRate, dateOfpayment, Deduction }).save()
+        await res.status(200).json({
+            message: "offer send!",
+            success: true
+        });
+    } catch (error) {
+
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+
+
+
+
+
+
+// API : accecting application and hire a worker 
+router.post("/applicant/accept-offer", async (req, res) => {
+    const { applicantId, employerId, jobId } = req.body;
+    try {
+        const hiredWorker = await JobListing.findOne({ _id: jobId }).select(["hiredWorkers", "numberOfWorkers"]).exec();
+        const isWorking = await JobSeeker.findOne({ _id: applicantId }).select("isHired").exec();
+        if (isWorking?.isHired) {
+            await res.status(500).json({
+                message: "Now this peson is not available for you!",
+                success: false,
+            });
+        } else {
+            if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers) {
+                await res.status(500).json({
+                    message: "You can not hire a more person!",
+                    success: false,
+                });
+            } else {
+                const hiered = await JobSeeker.updateOne({ _id: applicantId }, { employerId, jobId, isHired: true });
+                const updateHiredtCount = await JobListing.findByIdAndUpdate({ _id: jobId, }, { $inc: { hiredWorkers: 1 } });
+                await Applicant.updateOne({ applicantId }, { applicationStatus: "accepted" });
+                if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers - 1) {
+                    await JobListing.updateOne({ jobId }, { isValid: false });
+                }
+                if (hiered && updateHiredtCount) {
+                    await res.status(200).json({
+                        message: "You have hired this person!",
+                        success: true,
+                    });
+                };
+            };
+        };
+    } catch (error) {
+        res.status(500).json({
+            message: error?.message,
+            success: true
+        });
+    };
+});
+
+
+
+module.exports = router;
+
