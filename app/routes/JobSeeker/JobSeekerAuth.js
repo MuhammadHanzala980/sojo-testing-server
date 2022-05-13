@@ -10,7 +10,11 @@ const multer = require("multer");
 const baseUrl = `http://localhost:8000/`;
 const createDir = require("../../dir");
 
+const accountSid = "AC_process.env.TWILIO_ACCOUNT_SID";
+const authToken = "process.env.TWILIO_AUTH_TOKEN";
 
+
+const client = require('twilio')(accountSid, authToken);
 
 
 console.log(process.env.JWT_SECRET)
@@ -40,7 +44,8 @@ const signToken = async user => await jwt.sign(user, process.env.JWT_SECRET, { e
 
 
 router.post("/auth/signup", async (req, res) => {
-    const { profilPicture, name, contact, dateOfBirth, totalExperience = Math.ceil(Math.random(10)*1) + " Years", nationality, FIN_or_WP, privateInfo, expectedSalary, workExperience, skills } = req.body
+    const { profilPicture, name, dateOfBirth, totalExperience = Math.ceil(Math.random(10) * 1) + " Years", nationality, FIN_or_WP, privateInfo, expectedSalary, workExperience, skills } = req.body
+    console.log(req.body);
     const findContact = await JobSeeker.findOne({ "privateInfo.contact": privateInfo.contact }).exec();
     console.log(findContact, privateInfo.contact)
     if (findContact) {
@@ -49,7 +54,7 @@ router.post("/auth/signup", async (req, res) => {
             success: false,
         })
     } else {
-        const jobSeeker = new JobSeeker({ name, contact, dateOfBirth, totalExperience, nationality, FIN_or_WP, privateInfo, expectedSalary, workExperience, skills, profilPicture });
+        const jobSeeker = new JobSeeker({ name, dateOfBirth, totalExperience, nationality, FIN_or_WP, privateInfo, expectedSalary, workExperience, skills, profilPicture });
         const saveJobSeeker = await jobSeeker.save();
         if (saveJobSeeker) {
             const user = await JobSeeker.findOne({ _id: saveJobSeeker._id }).exec();
@@ -122,18 +127,33 @@ url: http://localhost:5000/api/v1/employer/auth/signin
 */
 router.post("/auth/signin", async (req, res) => {
     const { contact } = req.body;
-    const user = await JobSeeker.findOne({ contact }).exec();
+    console.log(contact)
+    const user = await JobSeeker.findOne({ "privateInfo.contact": contact }).exec();
     if (user) {
         const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "2m", });
         const link = await new AuthLinks({ authLink: token });
         const linkSaved = await link.save();
         if (linkSaved) {
+
             res.status(200).json({
                 message: "Auth Success",
                 authLink: `http://localhost:3000/auth/job-seeker/${linkSaved._id}`,
                 success: true,
                 user
             });
+            // client.messages
+            //     .create({
+            //         from: 'whatsapp:+923172679586',
+            //         body: `http://localhost:3000/auth/job-seeker/${linkSaved._id}`,
+            //         to: 'whatsapp:+923092793477'
+            //     }).then(message => {
+            //         res.status(200).json({
+            //             message: "Auth Success",
+            //             // authLink: `http://localhost:3000/auth/job-seeker/${linkSaved._id}`,
+            //             success: true,
+            //             user
+            //         });
+            //     });
         } else {
             res.status(500).json({
                 message: "Somthing went to wrong!",
@@ -170,6 +190,7 @@ body:{
 
 router.post("/auth/signin-verification", async (req, res) => {
     const { authLink } = req.body;
+    console.log(authLink);
     if (authLink) {
         const linkData = await AuthLinks.findOne({
             _id: authLink.replace("http://localhost:3000/", ""),

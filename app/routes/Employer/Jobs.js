@@ -6,6 +6,7 @@ const JobListing = require("../../models/JobListing");
 const JobSeeker = require("../../models/JobSeekerAuth");
 const jwt = require("jsonwebtoken");
 const EmployersAuth = require("../../models/EmployersAuth");
+const Applicant = require("../../models/Applicant");
 
 /*
 API for employer signup
@@ -49,13 +50,20 @@ router.post("/job/create", async (req, res) => {
   try {
     const jobListing = new JobListing({ projectTitle, jobTitle, description, skillLevel, requiredeExperience, numberOfWorkers, salary, employerId })
     const saveData = await jobListing.save()
+    console.log(saveData, "---")
     if (saveData) {
       await res.status(200).json({
         message: "Job " + jobTitle + " successfully created !",
         success: true
       });
+    } else {
+      res.status(500).json({
+        message: "error?.message",
+        success: true
+      });
     };
   } catch (error) {
+    console.log(error)
     res.status(200).json({
       message: error?.message,
       success: true
@@ -76,6 +84,11 @@ router.get("/job/get/:id", async (req, res) => {
         success: true,
         jobs: jobListing
       });
+    } else {
+      await res.status(200).json({
+        message: "Jobs not found",
+        success: true,
+      });
     };
   } catch (error) {
     res.status(200).json({
@@ -91,10 +104,10 @@ router.put("/job/update", async (req, res) => {
   const { projectTitle, jobTitle, description, skillLevel, requiredeExperience, numberOfWorkers, salary, jobId } = req.body;
   try {
     const updateData = await JobListing.updateOne(
-      { jobId }, { projectTitle, jobTitle, description, skillLevel, requiredeExperience, numberOfWorkers, salary });
+      { _id: jobId }, { projectTitle, jobTitle, description, skillLevel, requiredeExperience, numberOfWorkers, salary });
     if (updateData) {
       await res.status(200).json({
-        message: "Job successfully created !",
+        message: "Job successfully updated !",
         success: true
       });
     };
@@ -111,12 +124,12 @@ router.put("/job/update", async (req, res) => {
 
 
 router.post("/job/search-job-seekers", async (req, res) => {
-  const { jobTitle = null, totalExperience = null, salary = null, skip = 0 } = req.body;
+  const { jobTitle, totalExperience, salary, skip = 0 } = req.body;
   console.log(jobTitle)
   try {
     const jobsSeekers = await JobSeeker.find({
       $or: [
-        { "skills.skill": jobTitle },
+        { "skills.skill": "RN DEV" },
         // { skills: { $elemMatch: { skill: 'RN DEV' } } },
         // {"awards.award":"Turing Award"},
         { totalExperience: totalExperience },
@@ -124,7 +137,9 @@ router.post("/job/search-job-seekers", async (req, res) => {
           "privateInfo.expectedSalary": {
             $gt: salary
           }
-        }]
+        }
+      
+      ]
     }).skip(skip).limit(10).exec();
     const totalJobSeeker = await JobSeeker.estimatedDocumentCount()
     await res.status(200).json({
@@ -176,6 +191,7 @@ router.post("/job/get-applicantion", async (req, res) => {
   const { skip, jobId } = req.body;
   try {
     const applicant = await Applicant.find({ jobId }).skip(skip).limit(20).select(["applicantId"]).exec();
+  console.log(applicant)
     const filterId = applicant.map(x => x.applicantId);
     const jobseeker = await JobSeeker.find({ '_id': { $in: filterId } }).exec();
     await res.status(200).json({

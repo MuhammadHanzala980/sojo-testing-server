@@ -1,0 +1,237 @@
+
+===>>>> SIGN UP
+URL  = > "http://localhost:8000/api/v1/employer/auth/signup"
+req  = >  POST
+{
+  "requiredWorkerType": "welder",
+  "requiredNumberOfWorker": 10,
+  "requiredeExperienceOfWorker": "2 years",
+  "requiredSkillLevel": "expert",
+  "salary":"20000",
+  "companyEmail": "maazahmed2k16@gmail.com",
+  "companyName": "DEVCOM",
+  "mobileNumber": "w2292",
+  "password": "123456789",
+  "address": "In BE, we usually write: John Smith, 23 Acacia Avenue, Harrogate, Yorkshire, POSTCODE. We might add 'UK' if the letter is coming from abroad.",
+  "sitePictures": ["http://www.pn-projectmanagement.com/uploads/2/7/8/8/27887585/editor/img-1296-002.jpg?1569383633","https://www.letsbuild.com/wp-content/uploads/2019/04/construction-site-2858310_1920-1.jpg" ],
+}
+
+
+
+
+
+
+
+===>>>> SIGNIN
+URL  = > "http://localhost:8000/api/v1/employer/auth/signin"
+req  = >  POST
+{
+  "companyEmail": "maazahmed2k16@gmail.com",
+  "password": "123456789",
+}
+
+
+
+
+
+
+
+
+===>>>> SIGN VERIFICATION
+URL  = > "http://localhost:8000/api/v1/employer/auth/signin-verification"
+req  = >  POST
+{
+  "authLink":"http://localhost:3000/627c83bfd40fc539428642a6"
+}
+
+
+
+
+
+
+===>>>> CREATE JOB
+URL  = > "http://localhost:8000/api/v1/employer/job/create"
+req  = >  POST
+{
+    "projectTitle":"DEZOsN",
+    "jobTitle":"Angulesr Developer",
+    "description":"We are hairing a react native developer that has 3 yeasrs of expirence",
+    "skillLevel":"Expert",
+    "requiredeExperience":"3 yeasrs",
+    "numberOfWorkers":"9",
+    "salary":"100000 to 300000",
+    "employerId":"623e07a284e9d9ca68871591"
+}
+
+
+
+
+
+
+
+===>>>> UPDATE JOB
+URL  = > "http://localhost:8000/api/v1/employer/job/update"
+req  = >  PUT
+{
+    jobId
+    "projectTitle":"DEZOsN",
+    "jobTitle":"Angulesr Developer",
+    "description":"We are hairing a react native developer that has 3 yeasrs of expirence",
+    "skillLevel":"Expert",
+    "requiredeExperience":"3 yeasrs",
+    "numberOfWorkers":"9",
+    "salary":"100000 to 300000",
+    "employerId":"623e07a284e9d9ca68871591"
+}
+
+
+
+
+
+
+===>>>> GET JOB
+req  = >  GET
+http://localhost:8000/api/v1/employer/job/get/{<employerId>}
+
+http://localhost:8000/api/v1/employer/job/get/623e07a284e9d9ca68871591
+
+
+
+
+
+
+===>>>> SEARCH JOBSEEKER (deb psbl)
+http://localhost:8000/api/v1/employer/job/search-job-seekers
+req  = >  POST
+{
+    "jobTitle": "Hacking"
+}
+
+
+
+
+===>>>>  JOBSEEKER DETAIL (deb)
+http://localhost:8000/api/v1/employer/job/job-seeker-detail
+req  = >  POST
+{
+    "jobSeekerId": "jobSeekerId"
+}
+
+
+
+
+===>>>> GET APPLICATION ON CREATED JOBS (deb)
+http://localhost:8000/api/v1/employer/job/get-applicantion
+req  = >  POST
+{
+    "jobId":"jkjjasd"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------
+===>>>> SIGN signup (jobseeker)
+URL  = > "http://localhost:8000/api/v1/job-seeker/auth/signup"
+req  = >  POST
+
+{
+        "dateOfBirth": {
+            "day": "23",
+            "month": "04",
+            "year": "1992"
+        },
+        "_id": "62508fa49211df63b1383fb9",
+        "name": "Maaz",
+        "nationality": "Pakistan",
+        "workExperience": [
+            {
+                "startDate": {
+                    "month": "11",
+                    "year": "2019"
+                },
+                "endDate": {
+                    "month": "7",
+                    "year": "2022"
+                },
+                "role": "React Native",
+                "companyName": "INGIDIGGI",
+                "_id": "624f113c580bdeb1c2e990bd"
+            }
+        ],
+        "totalExperience": "4 Years",
+        "privateInfo": {
+            "contact": "0955",
+            "FIN_or_WP": "23234523",
+            "expectedSalary": "200000",
+            "certificateOrLicense": [
+                {
+                    "skillName": "React Native",
+                    "startDate": "2019",
+                    "endDate": "2020",
+                    "_id": "624f113c580bdeb1c2e990bf"
+                }
+            ],
+            "_id": "624f113c580bdeb1c2e990be"
+        },
+        "skills": [
+            {
+                "skill": "RN DEV",
+                "quiz": 100,
+                "_id": "6252d31d19ad182766338272",
+                "replied": true
+            }
+        ],
+        "employerId": "not found",
+        "jobId": "not found",
+        "isHired": false,
+        "languageRating": 0,
+        "characterRating": 0,
+        "healthRating": 0,
+        "verified": false,
+        "searchNewJobCount": 0,
+        "createdAt": "2022-04-08T19:40:20.675Z",
+        "updatedAt": "2022-05-07T15:16:05.958Z",
+        "__v": 0
+    }
+
+
+
+
+
+
+===>>>> SIGNIN (jobseeker)
+URL  = > "http://localhost:8000/api/v1/job-seeker/auth/signin"
+req  = >  POST
+{
+"contact": "0955",
+}
+
+
+
+
+
+
+===>>>> SIGN VERIFICATION (jobseeker)
+URL  = > "http://localhost:8000/api/v1/employer/auth/signin-verification"
+req  = >  POST
+{
+  "authLink":"http://localhost:3000/627c83bfd40fc539428642a6"
+}
+
+
+
+
+
+
+

@@ -2,11 +2,10 @@ const express = require("express");
 const moment = require("moment");
 const router = express.Router();
 const Applicant = require("../../models/Applicant");
-const EmployersAuth = require("../../models/EmployersAuth");
 const JobListing = require("../../models/JobListing");
 const JobSeeker = require("../../models/JobSeekerAuth");
 const Offers = require("../../models/ActionsModal");
-// const AssessModal = require("../../models/AssessModal");
+const Employex = require("../../models/EmployeeModal");
 
 
 
@@ -62,6 +61,23 @@ router.post("/applicant/apply", async (req, res) => {
 });
 
 
+router.post("/applicant/auto-applay", async (req, res) => {
+    const { applicantId, skill } = req.body;
+    const date = moment().startOf(1, 'day');
+    const today = date.toDate();
+    date.add(3, 'days');
+    const ater4days = moment(date).endOf(date.add(1, 'day')).toDate();
+    console.log(ater4days);
+    const jobII_DD_SS = await JobListing.find({}).select(["jobTitle", "employerId"]).exec();
+    await jobII_DD_SS.map(async v => {
+        await new Applicant({ autoApplied: true, applicantId, jobTitle: skill, employerId: v.employerId, applicationStatus: "applied", expiredAt: ater4days }).save();
+    })
+    res.status(500).json({
+        message: "Auto applied successed",
+        success: true
+    });
+})
+
 
 
 
@@ -93,7 +109,8 @@ router.post("/applicant/apply", async (req, res) => {
 ************************************************************************
 */
 router.post("/applicant/get-appled-applicatons", async (req, res) => {
-    const { applicantId, skip = 0, applicationStatus } = req.body;
+    const { applicantId, skip = 0, applicationStatus, autoApplied } = req.body;
+    
     console.log(applicantId, skip, applicationStatus);
     const date = moment().startOf(1, 'day');
     const today = date.toDate();
@@ -103,9 +120,10 @@ router.post("/applicant/get-appled-applicatons", async (req, res) => {
         const applicant = await Applicant.find({
             applicantId,
             applicationStatus,
-            //         rejectedAt: {
-            //             $gte:  today 
-            //    }
+            autoApplied,
+            // rejectedAt: {
+            //     $gte: today
+            // }
         }).skip(skip).limit(20).exec();
         // console.log(applicant.filter(x => x.rejectedAt < after3days), "ll")
         const filterId = applicant.map(x => x.jobId);
@@ -123,6 +141,9 @@ router.post("/applicant/get-appled-applicatons", async (req, res) => {
         });
     };
 });
+
+
+
 
 
 
@@ -575,46 +596,161 @@ router.post("/offer/get-emp-offers", async (req, res) => {
 
 
 
+/*
+************************************************************************
+this API will work When jobseeker accept any job  
+_______________________________________________________________________ 
+after runing this api applicant will move to accepte tab on emplyer dashboard
+ _______________________________________________________________________
+ url = http://localhost:8000/api/v1/job/applicant/accept-offer
+ body:{                                                                 
+  applicantId,
+  jobTitle,
+  employerId,
+  employeeName                                                
+ }                                                                      
+************************************************************************
+*/
 
-// API : accecting application and hire a worker 
-router.post("/applicant/accept-offer", async (req, res) => {
-    const { applicantId, employerId, jobId } = req.body;
+router.post("/offer/accept-offer", async (req, res) => {
+    const { applicantId, jobTitle, employerId, employeeName } = req.body;
     try {
-        const hiredWorker = await JobListing.findOne({ _id: jobId }).select(["hiredWorkers", "numberOfWorkers"]).exec();
-        const isWorking = await JobSeeker.findOne({ _id: applicantId }).select("isHired").exec();
-        if (isWorking?.isHired) {
-            await res.status(500).json({
-                message: "Now this peson is not available for you!",
-                success: false,
+        await Applicant.deleteOne({ applicantId, jobTitle, employerId });
+        const addToAccepted = await new Employex({ employeeName, employee_Id: applicantId, jobTitle, employerId }).save();
+        console.log(addToAccepted)
+        res.status(200).json({
+            success: true,
+            message: "Thank you for accepting our offer!  will inform you about further prosses!"
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: true,
+            message: err?.message
+        });
+    }
+});
+
+
+
+
+
+/*
+************************************************************************
+This api will work when employer chacked  any chack-box on accepted tab
+_______________________________________________________________________ 
+ _______________________________________________________________________
+ url = http://localhost:8000/api/v1/job/offer/update-accepted-offer
+ body:{                                                                 
+  applicantId,
+  jobTitle,
+  employerId,
+  employeeName                                                
+ }                                                                      
+************************************************************************
+*/
+router.post("/offer/update-accepted-offer", async (req, res) => {
+    const { _id, WP_Application, medicalInsurance, securityBond, healthCheck_up, flightTicketPurchase, } = req.body;
+    try {
+        await Employex.updateOne({ _id }, { WP_Application, medicalInsurance, securityBond, healthCheck_up, flightTicketPurchase, });
+        const terms = await Employex.findOne({ _id }).select(["WP_Application", "medicalInsurance", "securityBond", "healthCheck_up", "flightTicketPurchase"]).exec();
+        console.log(terms)
+        if (WP_Application && medicalInsurance && securityBond && healthCheck_up && flightTicketPurchase) {
+            res.status(200).json({
+                success: true,
+                message: "Hiring process compelete!"
             });
         } else {
-            if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers) {
-                await res.status(500).json({
-                    message: "You can not hire a more person!",
-                    success: false,
-                });
-            } else {
-                const hiered = await JobSeeker.updateOne({ _id: applicantId }, { employerId, jobId, isHired: true });
-                const updateHiredtCount = await JobListing.findByIdAndUpdate({ _id: jobId, }, { $inc: { hiredWorkers: 1 } });
-                await Applicant.updateOne({ applicantId }, { applicationStatus: "accepted" });
-                if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers - 1) {
-                    await JobListing.updateOne({ jobId }, { isValid: false });
-                }
-                if (hiered && updateHiredtCount) {
-                    await res.status(200).json({
-                        message: "You have hired this person!",
-                        success: true,
-                    });
-                };
-            };
-        };
-    } catch (error) {
+            res.status(200).json({
+                success: true,
+                message: "informations submited"
+            });
+        }
+    } catch (err) {
         res.status(500).json({
-            message: error?.message,
-            success: true
+            success: false,
+            message: err?.message
         });
-    };
+    }
 });
+
+
+
+
+
+
+
+/*
+************************************************************************
+fetching accepted list on employer panale
+_______________________________________________________________________ 
+ _______________________________________________________________________
+ url = http://localhost:8000/api/v1/job/offer/get-accepted-offer
+ body:{                                                                 
+  employerId,
+  jobTitle , ..... agar nhi he to id se data laayga                                               
+ }                                                                      
+************************************************************************
+*/
+router.post("/offer/get-accepted-offer", async (req, res) => {
+    const { employerId, jobTitle } = req.body;
+    try {
+        const getAcceptedOffer = await Employex.find(jobTitle ? { employerId, jobTitle } : { employerId }).exec();
+        res.status(200).json({
+            success: true,
+            acceptedOffer: getAcceptedOffer,
+            message: "informations submited"
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err?.message
+        });
+    }
+})
+
+
+
+
+
+// // API : accecting application and hire a worker 
+// router.post("/applicant/accept-offer", async (req, res) => {
+//     const { applicantId, employerId, jobId } = req.body;
+//     try {
+//         const hiredWorker = await JobListing.findOne({ _id: jobId }).select(["hiredWorkers", "numberOfWorkers"]).exec();
+//         const isWorking = await JobSeeker.findOne({ _id: applicantId }).select("isHired").exec();
+//         if (isWorking?.isHired) {
+//             await res.status(500).json({
+//                 message: "Now this peson is not available for you!",
+//                 success: false,
+//             });
+//         } else {
+//             if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers) {
+//                 await res.status(500).json({
+//                     message: "You can not hire a more person!",
+//                     success: false,
+//                 });
+//             } else {
+//                 const hiered = await JobSeeker.updateOne({ _id: applicantId }, { employerId, jobId, isHired: true });
+//                 const updateHiredtCount = await JobListing.findByIdAndUpdate({ _id: jobId, }, { $inc: { hiredWorkers: 1 } });
+//                 await Applicant.updateOne({ applicantId }, { applicationStatus: "accepted" });
+//                 if (hiredWorker?.hiredWorkers == hiredWorker?.numberOfWorkers - 1) {
+//                     await JobListing.updateOne({ jobId }, { isValid: false });
+//                 }
+//                 if (hiered && updateHiredtCount) {
+//                     await res.status(200).json({
+//                         message: "You have hired this person!",
+//                         success: true,
+//                     });
+//                 };
+//             };
+//         };
+//     } catch (error) {
+//         res.status(500).json({
+//             message: error?.message,
+//             success: true
+//         });
+//     };
+// });
 
 
 

@@ -14,7 +14,8 @@ const Job = mongoose.Schema({
     isValid: { type: Boolean, required: false, default: true },
     hiredWorkers: { type: Number, required: true, default: 0 },
     numberOfApplicants: { type: Number, required: false, default: 0 },
-    sitePictures: { type: [String], required: false, }
+    sitePictures: { type: [String], required: false, },
+    reviews:{type:[], required:false}
 }, { timestamps: true });
 
 

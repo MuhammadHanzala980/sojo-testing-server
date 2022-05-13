@@ -32,16 +32,17 @@ router.get("/job/get/:id", async (req, res) => {
     const { id } = req.params;
     try {
         let findJobDetail = await JobListing.findOne({ _id: id }).exec();
-        // findJobDetail.sitePictures = []
-        const findeSidePic = await Employers.findOne({ _id: findJobDetail?.employerId })
-            .select("sitePictures").exec()
-        findJobDetail.sitePictures = await findeSidePic?.sitePictures;
+        console.log(findJobDetail)
+        const employerDetails = await Employers.findOne({ _id: findJobDetail?.employerId }).select(["sitePictures", "reviews"]).exec();
+        findJobDetail.sitePictures = await employerDetails?.sitePictures;
+        findJobDetail.reviews = await employerDetails?.reviews;
+
         await res.status(200).json({
-            message: "Job",
             success: true,
             jobDetail: findJobDetail
         });
     } catch (error) {
+        console.log(error)
         res.status(200).json({
             message: error?.message,
             success: false

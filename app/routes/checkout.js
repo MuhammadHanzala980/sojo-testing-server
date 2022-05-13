@@ -8,6 +8,41 @@ const stripe = require("stripe")("sk_test_51K46yCFn2LpnmXjwzRpyo6gOhmAG4WIa17bz3
 require("dotenv").config();
 const cryptr = new Cryptr(process.env.URL_KEY);
 
+
+const { Paynow } = require("paynow");
+let paynow = new Paynow("INTEGRATION_ID", "INTEGRATION_KEY");
+
+paynow.resultUrl = "http://example.com/gateways/paynow/update";
+paynow.returnUrl = "http://example.com/return?gateway=paynow&merchantReference=1234";
+
+
+
+let payment = paynow.createPayment("Invoice 35");
+
+router.get("/paynow-payment", (req, res) => {
+
+  // // Add items to the payment list passing in the name of the item and it's price
+  payment.add("Bananas", 2.5);
+  payment.add("Apples", 3.4);
+
+  // // Send off the payment to Paynow
+  paynow.send(payment).then((response) => {
+
+    // Check if request was successful
+    if (response.success) {
+      // Get the link to redirect the user to, then use it as you see fit
+      let link = response.redirectUrl;
+
+      // Save poll url, maybe (recommended)?
+      let pollUrl = response.pollUrl;
+    }
+
+  });
+
+});
+
+
+
 router.post("/stripe-payment", (req, res) => {
   console.log("00000")
   const { amount, email, token, employerId, paymentInfo } = req.body;

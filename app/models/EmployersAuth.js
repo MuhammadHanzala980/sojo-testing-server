@@ -20,7 +20,17 @@ const employers = mongoose.Schema({
   allowance: { type: String, required: false },
   deduction: { type: String, required: false },
   paymentInfo: { type: String, required: false },
-
-
+  reviews: {
+    type: [
+      {
+        previousEmployeeId: { type: String, required: true },
+        bossReview: { type: Number, required: true },
+        salaryReview: { type: Number, required: true },
+        safeEnvironmentReview: { type: Number, required: true },
+        dormantReview: { type: Number, required: true },
+        healthcareReview: { type: Number, required: true },
+      }
+    ], default: false
+  }
 }, { timestamps: true });
 module.exports = mongoose.model("employer", employers);

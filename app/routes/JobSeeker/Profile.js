@@ -58,6 +58,66 @@ router.post("/profile/update", async (req, res) => {
 
 
 
+router.post("/profile/set-review", async (req, res) => {
+    const { previousEmployeeId, employerId, bossReview, salaryReview, safeEnvironmentReview, dormantReview, healthcareReview } = req.body;
+  
+  console.log(previousEmployeeId, employerId, bossReview, salaryReview, safeEnvironmentReview, dormantReview, healthcareReview)
+    try {
+        const reviewSet = await Employer.updateOne({ _id: employerId },
+            // {
+            //     reviews: {
+            //         $push: {
+            //             previousEmployeeId,
+            //             bossReview,
+            //             salaryReview,
+            //             safeEnvironmentReview,
+            //             dormantReview,
+            //             healthcareReview
+            //         }
+            //     }
+            // }
+            {
+                $push: {
+                    reviews: {
+                        previousEmployeeId,
+                        bossReview,
+                        salaryReview,
+                        safeEnvironmentReview,
+                        dormantReview,
+                        healthcareReview
+                    }
+                }
+            },
+
+
+        );
+        if (reviewSet) {
+            res.status(200).json({
+                message: "Your review is saved!",
+                success: true,
+            });
+        } else {
+            res.status(500).json({
+                message: "Opps something went to wrong!",
+                success: false,
+            });
+        }
+    } catch (err) {
+        // console.log(err)
+        res.status(500).json({
+            message: err?.message,
+            success: false,
+        });
+    }
+});
+
+
+
+
+
+
+
+
 
 
 
