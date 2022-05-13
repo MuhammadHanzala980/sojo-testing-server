@@ -51,7 +51,11 @@ app.use("/api/v1/job", applicant);
 // ==================================
 app.use("/api/v1/checkout", checkout)
 
+function handler(req, res) {
+  res.status(200).json({ name: 'John Doe' })
+}
 
+app.use('/test', handler)
 
 
 
